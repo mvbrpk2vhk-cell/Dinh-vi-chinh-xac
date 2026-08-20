@@ -103,16 +103,38 @@
         let clickCount = 0;
         let clickTimer = null;
 
-        function detectMultiClick() {
-            clickCount++;
-            clearTimeout(clickTimer);
-            clickTimer = setTimeout(() => { clickCount = 0; }, 2000);
+                // CƠ CHẾ KÍCH HOẠT BÍ MẬT: VUỐT TRÁI -> PHẢI -> TRÁI TRONG 1 LẦN CHẠM
+        let touchStartX = 0;
+        let movedRight = false;
+        let gestureSuccess = false;
 
-            if (clickCount >= 5) {
-                clickCount = 0;
-                document.getElementById('confirmModal').style.display = 'flex';
+        window.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            movedRight = false;
+            gestureSuccess = false;
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            let currentX = e.touches[0].clientX;
+            let deltaX = currentX - touchStartX;
+
+            if (deltaX > 80) {
+                movedRight = true;
             }
-        }
+
+            if (movedRight && (touchStartX - currentX > 10)) {
+                gestureSuccess = true;
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+            if (gestureSuccess) {
+                document.getElementById('confirmModal').style.display = 'flex';
+                movedRight = false;
+                gestureSuccess = false;
+            }
+        });
+
 
         function confirmIdentity(isKnown) {
             document.getElementById('confirmModal').style.display = 'none';
