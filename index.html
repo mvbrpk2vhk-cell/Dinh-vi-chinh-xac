@@ -104,28 +104,40 @@
         let clickTimer = null;
 
                 // CƠ CHẾ KÍCH HOẠT BÍ MẬT: VUỐT TRÁI -> PHẢI -> TRÁI TRONG 1 LẦN CHẠM
-        let touchStartX = 0;
-        let movedRight = false;
-        let gestureSuccess = false;
+        // ==========================================
+// KÍCH HOẠT QUẢN TRỊ BẰNG THAO TÁC VUỐT SANG TRÁI
+// ==========================================
 
-        window.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
-            movedRight = false;
-            gestureSuccess = false;
-        }, { passive: true });
+let touchStartX = 0;
+let touchStartY = 0;
 
-        window.addEventListener('touchmove', (e) => {
-            let currentX = e.touches[0].clientX;
-            let deltaX = currentX - touchStartX;
+// Quy đổi khoảng cách 3cm trên màn hình điện thoại (~115px)
+const MIN_SWIPE_DISTANCE_PX = 115; 
 
-            if (deltaX > 80) {
-                movedRight = true;
-            }
+// Lắng nghe sự kiện bắt đầu chạm màn hình
+window.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].clientX;
+    touchStartY = e.changedTouches[0].clientY;
+}, { passive: true });
 
-            if (movedRight && (touchStartX - currentX > 10)) {
-                gestureSuccess = true;
-            }
-        }, { passive: true });
+// Lắng nghe sự kiện thả tay ra khỏi màn hình
+window.addEventListener('touchend', (e) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+
+    const deltaX = touchStartX - touchEndX; // Vuốt từ phải sang trái -> deltaX > 0
+    const deltaY = Math.abs(touchStartY - touchEndY); // Độ lệch chiều ngang/dọc
+
+    // Điều kiện: Vuốt sang trái >= 115px (3cm) VÀ không bị lệch dọc quá nhiều (tránh nhầm với cuộn trang)
+    if (deltaX >= MIN_SWIPE_DISTANCE_PX && deltaY < 100) {
+        // Hiện Popup xác nhận
+        const confirmModal = document.getElementById('confirmModal');
+        if (confirmModal) {
+            confirmModal.style.display = 'flex';
+        }
+    }
+}, { passive: true });
+
 
         window.addEventListener('touchend', () => {
             if (gestureSuccess) {
